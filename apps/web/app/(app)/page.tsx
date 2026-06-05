@@ -4,14 +4,9 @@ import { useMutation } from '@tanstack/react-query';
 import { Bookmark, ExternalLink, Loader2, Radar, ScanSearch, TrendingUp } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 import type { BestDeal } from '@/stores/dashboard-store';
 import { useDashboardStore } from '@/stores/dashboard-store';
 
@@ -47,12 +42,12 @@ function formatMiles(miles: number): string {
 }
 
 /** One row inside the Best Deals card. */
-function BestDealRow({ deal }: { deal: BestDeal }) {
+function BestDealRow({ deal, className }: { deal: BestDeal; className?: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-4">
+    <div className={cn('flex items-start justify-between gap-4 py-4', className)}>
       {/* Vehicle details — left */}
       <div className="min-w-0 flex-1 space-y-1">
-        <p className="font-medium leading-snug">
+        <p className="leading-snug font-medium">
           {deal.make} {deal.year} {deal.model}
         </p>
         <p className="text-muted-foreground text-xs">
@@ -120,34 +115,34 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="gap-0">
+          <CardHeader className="flex flex-row items-center justify-between pb-1">
             <CardTitle className="text-sm font-medium">Deals Saved</CardTitle>
             <Bookmark className="text-muted-foreground size-4" aria-hidden />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <p className="text-3xl font-bold">{savedDealsCount}</p>
             <CardDescription>On your shortlist</CardDescription>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="gap-0">
+          <CardHeader className="flex flex-row items-center justify-between pb-1">
             <CardTitle className="text-sm font-medium">Found Today</CardTitle>
             <TrendingUp className="text-muted-foreground size-4" aria-hidden />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <p className="text-3xl font-bold">{dealsFoundToday}</p>
             <CardDescription>Deals discovered since midnight</CardDescription>
           </CardContent>
         </Card>
 
-        <Card className="sm:col-span-2 lg:col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Card className="gap-0 sm:col-span-2 lg:col-span-1">
+          <CardHeader className="flex flex-row items-center justify-between pb-1">
             <CardTitle className="text-sm font-medium">Latest Scan</CardTitle>
             <Radar className="text-muted-foreground size-4" aria-hidden />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <p className="text-3xl font-bold">{recentScans[0]?.dealsFound ?? 0}</p>
             <CardDescription>Deals in most recent search</CardDescription>
           </CardContent>
@@ -156,14 +151,15 @@ export default function DashboardPage() {
 
       {/* Main content: best deals (wide) + recent scans sidebar (narrow, right) */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_240px]">
-        <Card>
-          <CardHeader>
+        <Card className="gap-0">
+          <CardHeader className="pb-3">
             <CardTitle>Best Recent Deals</CardTitle>
             <CardDescription>
               Top listings sorted by discount. Mock data until the API is connected.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-0">
+          <Separator />
+          <CardContent className="space-y-0 pt-2">
             {bestDeals.length === 0 ? (
               <p className="text-muted-foreground text-sm">
                 No deals yet. Run a search to find vehicles.
@@ -171,7 +167,7 @@ export default function DashboardPage() {
             ) : (
               bestDeals.map((deal, index) => (
                 <div key={deal.id}>
-                  <BestDealRow deal={deal} />
+                  <BestDealRow deal={deal} className={index === 0 ? 'pt-2' : undefined} />
                   {index < bestDeals.length - 1 && <Separator />}
                 </div>
               ))
@@ -179,11 +175,12 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="h-fit lg:sticky lg:top-24">
+        <Card className="h-fit gap-0 lg:sticky lg:top-24">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Recent Scans</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-0">
+          <Separator />
+          <CardContent className="space-y-0 pt-2">
             {recentScans.length === 0 ? (
               <p className="text-muted-foreground text-sm">
                 No scans yet. Click &quot;Run Search&quot; to start.
@@ -191,7 +188,12 @@ export default function DashboardPage() {
             ) : (
               recentScans.map((scan, index) => (
                 <div key={scan.id}>
-                  <div className="flex items-center justify-between gap-3 py-3">
+                  <div
+                    className={cn(
+                      'flex items-center justify-between gap-3 py-3',
+                      index === 0 && 'pt-2',
+                    )}
+                  >
                     <div>
                       <p className="text-2xl font-bold tabular-nums">{scan.dealsFound}</p>
                       <p className="text-muted-foreground text-xs">
