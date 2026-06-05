@@ -14,16 +14,25 @@ export interface VehicleListing {
   discountPercentage: number;
   posted: Date;
   url: string;
+  description: string;
+}
+
+/** Frontend-only metadata tracked when a listing is saved to the shortlist. */
+export interface SavedListingEntry {
+  savedAt: Date;
+  notes: string;
 }
 
 interface ListingsState {
   listings: VehicleListing[];
   savedListingIds: string[];
+  savedEntries: Record<string, SavedListingEntry>;
   toggleSaveListing: (listingId: string) => void;
+  removeFromShortlist: (listingId: string) => void;
+  updateNotes: (listingId: string, notes: string) => void;
   isSaved: (listingId: string) => boolean;
 }
 
-/** Mock listings until the backend listings API is connected. */
 const MOCK_LISTINGS: VehicleListing[] = [
   {
     id: 'listing-1',
@@ -38,6 +47,8 @@ const MOCK_LISTINGS: VehicleListing[] = [
     discountPercentage: 18.4,
     posted: new Date(Date.now() - 3 * 60 * 60 * 1000),
     url: 'https://example.com/listing/1',
+    description:
+      'Clean title, one owner. Regular oil changes, new tires last year. Minor scratch on rear bumper.',
   },
   {
     id: 'listing-2',
@@ -52,6 +63,8 @@ const MOCK_LISTINGS: VehicleListing[] = [
     discountPercentage: 16.3,
     posted: new Date(Date.now() - 8 * 60 * 60 * 1000),
     url: 'https://example.com/listing/2',
+    description:
+      'LX trim, silver exterior. Seller motivated — relocating next month. AC blows cold, no warning lights.',
   },
   {
     id: 'listing-3',
@@ -66,6 +79,8 @@ const MOCK_LISTINGS: VehicleListing[] = [
     discountPercentage: 14.8,
     posted: new Date(Date.now() - 1 * 60 * 60 * 1000),
     url: 'https://example.com/listing/3',
+    description:
+      'Grand Touring AWD. Leather seats, Bose audio, adaptive cruise. Dealer-maintained service records available.',
   },
   {
     id: 'listing-4',
@@ -80,6 +95,8 @@ const MOCK_LISTINGS: VehicleListing[] = [
     discountPercentage: 21.4,
     posted: new Date(Date.now() - 14 * 60 * 60 * 1000),
     url: 'https://example.com/listing/4',
+    description:
+      '2.5i Premium with eyesight. Roof rack included. Small rock chip on windshield, otherwise excellent condition.',
   },
   {
     id: 'listing-5',
@@ -94,6 +111,8 @@ const MOCK_LISTINGS: VehicleListing[] = [
     discountPercentage: 17.4,
     posted: new Date(Date.now() - 5 * 60 * 60 * 1000),
     url: 'https://example.com/listing/5',
+    description:
+      'SE Hybrid. Great fuel economy, backup camera, Bluetooth. Non-smoker, garage kept.',
   },
   {
     id: 'listing-6',
@@ -108,6 +127,8 @@ const MOCK_LISTINGS: VehicleListing[] = [
     discountPercentage: 15.0,
     posted: new Date(Date.now() - 22 * 60 * 60 * 1000),
     url: 'https://example.com/listing/6',
+    description:
+      'SEL Plus trim with panoramic sunroof. Apple CarPlay, heated seats. Single accident on Carfax — rear bumper only.',
   },
   {
     id: 'listing-7',
@@ -122,6 +143,8 @@ const MOCK_LISTINGS: VehicleListing[] = [
     discountPercentage: 11.1,
     posted: new Date(Date.now() - 6 * 60 * 60 * 1000),
     url: 'https://example.com/listing/7',
+    description:
+      'XLE AWD. Lane assist, blind-spot monitoring. All scheduled maintenance done at Toyota dealership.',
   },
   {
     id: 'listing-8',
@@ -136,28 +159,66 @@ const MOCK_LISTINGS: VehicleListing[] = [
     discountPercentage: 16.2,
     posted: new Date(Date.now() - 11 * 60 * 60 * 1000),
     url: 'https://example.com/listing/8',
+    description:
+      'EX trim with Honda Sensing. New brakes and battery. Third row not included — standard 5-seat configuration.',
   },
 ];
 
+/** Demo shortlist entries so the page is not empty before visiting Listings. */
+const INITIAL_SAVED_ENTRIES: Record<string, SavedListingEntry> = {
+  'listing-1': { savedAt: new Date(Date.now() - 4 * 60 * 60 * 1000), notes: '' },
+  'listing-3': {
+    savedAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
+    notes: 'Schedule test drive this weekend.',
+  },
+};
+
 export const useListingsStore = create<ListingsState>((set, get) => ({
   listings: MOCK_LISTINGS,
-  savedListingIds: [],
+  savedListingIds: ['listing-1', 'listing-3'],
+  savedEntries: INITIAL_SAVED_ENTRIES,
 
   toggleSaveListing: (listingId) => {
     set((state) => {
       const isCurrentlySaved = state.savedListingIds.includes(listingId);
+
+      if (isCurrentlySaved) {
+        const { [listingId]: _removed, ...remainingEntries } = state.savedEntries;
+        return {
+          savedListingIds: state.savedListingIds.filter((id) => id !== listingId),
+          savedEntries: remainingEntries,
+        };
+      }
+
       return {
-        savedListingIds: isCurrentlySaved
-          ? state.savedListingIds.filter((id) => id !== listingId)
-          : [...state.savedListingIds, listingId],
+        savedListingIds: [...state.savedListingIds, listingId],
+        savedEntries: {
+          ...state.savedEntries,
+          [listingId]: { savedAt: new Date(), notes: '' },
+        },
       };
     });
+  },
+
+  removeFromShortlist: (listingId) => {
+    get().toggleSaveListing(listingId);
+  },
+
+  updateNotes: (listingId, notes) => {
+    set((state) => ({
+      savedEntries: {
+        ...state.savedEntries,
+        [listingId]: {
+          ...state.savedEntries[listingId],
+          notes,
+        },
+      },
+    }));
   },
 
   isSaved: (listingId) => get().savedListingIds.includes(listingId),
 }));
 
-/** Unique platforms and makes derived from the mock listing set. */
 export function getPlatformOptions(listings: VehicleListing[]): string[] {
   return [...new Set(listings.map((l) => l.platform))].sort();
 }
