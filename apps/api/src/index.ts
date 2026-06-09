@@ -4,6 +4,8 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { searchConfigRouter } from './routes/search-config-routes.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -24,6 +26,8 @@ app.use(express.json());
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
+
+app.use('/api/search-configuration', searchConfigRouter);
 
 const server = app.listen(PORT);
 

@@ -10,6 +10,7 @@ export interface SearchConfiguration {
   minMileage: number;
   maxMileage: number;
   zipCode: string;
+  city: string;
   radius: number;
   discountPercent: number;
   discountDollar: number;
@@ -19,12 +20,13 @@ interface SearchConfigState {
   config: SearchConfiguration;
   lastSavedAt: Date | null;
   setConfig: (partial: Partial<SearchConfiguration>) => void;
+  hydrateConfig: (config: SearchConfiguration, savedAt?: Date) => void;
+  markSaved: (savedAt: Date) => void;
   togglePlatform: (platform: string) => void;
   addMake: (make: string) => void;
   removeMake: (make: string) => void;
   addModel: (model: string) => void;
   removeModel: (model: string) => void;
-  saveConfiguration: () => void;
 }
 
 export const MARKETPLACE_OPTIONS = [
@@ -58,12 +60,13 @@ const DEFAULT_CONFIG: SearchConfiguration = {
   minMileage: 0,
   maxMileage: 90000,
   zipCode: '78701',
+  city: 'Austin',
   radius: 50,
   discountPercent: 12,
   discountDollar: 2000,
 };
 
-export const useSearchConfigStore = create<SearchConfigState>((set, get) => ({
+export const useSearchConfigStore = create<SearchConfigState>((set) => ({
   config: DEFAULT_CONFIG,
   lastSavedAt: null,
 
@@ -71,6 +74,17 @@ export const useSearchConfigStore = create<SearchConfigState>((set, get) => ({
     set((state) => ({
       config: { ...state.config, ...partial },
     }));
+  },
+
+  hydrateConfig: (config, savedAt) => {
+    set({
+      config,
+      lastSavedAt: savedAt ?? null,
+    });
+  },
+
+  markSaved: (savedAt) => {
+    set({ lastSavedAt: savedAt });
   },
 
   togglePlatform: (platform) => {
@@ -122,9 +136,4 @@ export const useSearchConfigStore = create<SearchConfigState>((set, get) => ({
     }));
   },
 
-  saveConfiguration: () => {
-    // Frontend-only persistence — replace with an API call when the backend is ready.
-    set({ lastSavedAt: new Date() });
-    console.info('Search configuration saved:', get().config);
-  },
 }));

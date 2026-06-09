@@ -1,7 +1,8 @@
 'use client';
 
-import { CheckCircle2, MapPin, Percent, Save, Search, SlidersHorizontal } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { CheckCircle2, Loader2, MapPin, Percent, Save, Search, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { TagInput } from '@/components/search-config/tag-input';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { fetchSearchConfiguration, saveSearchConfiguration } from '@/lib/api';
 import {
   MARKETPLACE_OPTIONS,
   SUGGESTED_MAKES,
@@ -25,20 +27,56 @@ function formatSavedTime(date: Date): string {
 
 /**
  * Search Configuration — define platforms, vehicle targets, location, and deal thresholds.
- * All state lives in Zustand until the backend SearchConfig API is wired up.
+ * Form state lives in Zustand; Save persists to POST /api/search-configuration.
  */
 export default function SearchConfigurationPage() {
   const config = useSearchConfigStore((state) => state.config);
   const lastSavedAt = useSearchConfigStore((state) => state.lastSavedAt);
   const setConfig = useSearchConfigStore((state) => state.setConfig);
+  const hydrateConfig = useSearchConfigStore((state) => state.hydrateConfig);
+  const markSaved = useSearchConfigStore((state) => state.markSaved);
   const togglePlatform = useSearchConfigStore((state) => state.togglePlatform);
   const addMake = useSearchConfigStore((state) => state.addMake);
   const removeMake = useSearchConfigStore((state) => state.removeMake);
   const addModel = useSearchConfigStore((state) => state.addModel);
   const removeModel = useSearchConfigStore((state) => state.removeModel);
-  const saveConfiguration = useSearchConfigStore((state) => state.saveConfiguration);
 
   const [justSaved, setJustSaved] = useState(false);
+
+  const savedConfigQuery = useQuery({
+    queryKey: ['search-configuration'],
+    queryFn: fetchSearchConfiguration,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!savedConfigQuery.data) return;
+
+    const saved = savedConfigQuery.data;
+    hydrateConfig({
+      platforms: saved.platforms,
+      makes: saved.makes,
+      models: saved.models,
+      yearMin: saved.yearMin,
+      yearMax: saved.yearMax,
+      minMileage: saved.minMileage,
+      maxMileage: saved.maxMileage,
+      zipCode: saved.zipCode,
+      city: saved.city,
+      radius: saved.radius,
+      discountPercent: saved.discountPercent,
+      discountDollar: saved.discountDollar,
+    });
+  }, [savedConfigQuery.data, hydrateConfig]);
+
+  const saveMutation = useMutation({
+    mutationFn: saveSearchConfiguration,
+    onSuccess: (response) => {
+      markSaved(new Date(response.savedAt));
+      setJustSaved(true);
+      window.setTimeout(() => setJustSaved(false), 3000);
+    },
+  });
 
   const activeFilterCount = useMemo(() => {
     return (
@@ -51,9 +89,7 @@ export default function SearchConfigurationPage() {
   }, [config]);
 
   const handleSave = () => {
-    saveConfiguration();
-    setJustSaved(true);
-    window.setTimeout(() => setJustSaved(false), 3000);
+    saveMutation.mutate(config);
   };
 
   return (
@@ -193,7 +229,9 @@ export default function SearchConfigurationPage() {
                   setConfig({ maxMileage: Number(event.target.value) || config.maxMileage })
                 }
               />
-              <p className="text-muted-foreground text-xs">Odometer must be at or below this value</p>
+              <p className="text-muted-foreground text-xs">
+                Odometer must be at or below this value
+              </p>
             </div>
           </div>
         </CardContent>
@@ -207,12 +245,23 @@ export default function SearchConfigurationPage() {
             Search Location
           </CardTitle>
           <CardDescription>
-            Results are geographically constrained to a radius around your ZIP code — similar to how
-            most marketplace apps limit local inventory searches.
+            Results are geographically constrained to a radius around your city and ZIP code —
+            similar to how most marketplace apps limit local inventory searches.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-6 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                placeholder="Austin"
+                value={config.city}
+                onChange={(event) => setConfig({ city: event.target.value })}
+              />
+              <p className="text-muted-foreground text-xs">City used for marketplace location searches</p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="zip-code">ZIP code</Label>
               <Input
@@ -242,7 +291,8 @@ export default function SearchConfigurationPage() {
                 }
               />
               <p className="text-muted-foreground text-xs">
-                Search within {config.radius} miles of {config.zipCode || 'your ZIP code'}
+                Search within {config.radius} miles of {config.city || 'your city'},{' '}
+                {config.zipCode || 'ZIP'}
               </p>
             </div>
           </div>
@@ -257,8 +307,8 @@ export default function SearchConfigurationPage() {
             Deal Thresholds
           </CardTitle>
           <CardDescription>
-            A listing qualifies as a good deal if it meets <strong>either</strong> threshold below
-            — percentage discount or fixed dollar savings versus estimated market value.
+            A listing qualifies as a good deal if it meets <strong>either</strong> threshold below —
+            percentage discount or fixed dollar savings versus estimated market value.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -329,7 +379,9 @@ export default function SearchConfigurationPage() {
       <div className="bg-background sticky bottom-0 -mx-4 border-t px-4 py-4 sm:-mx-6 sm:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-muted-foreground text-sm">
-            {justSaved ? (
+            {saveMutation.isError ? (
+              <span className="text-destructive">Failed to save. Check that the API is running.</span>
+            ) : justSaved ? (
               <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="size-4" aria-hidden />
                 Configuration saved
@@ -342,9 +394,23 @@ export default function SearchConfigurationPage() {
             )}
           </div>
 
-          <Button size="lg" onClick={handleSave} className="w-full sm:w-auto">
-            <Save aria-hidden />
-            Save Configuration
+          <Button
+            size="lg"
+            onClick={handleSave}
+            disabled={saveMutation.isPending}
+            className="w-full sm:w-auto"
+          >
+            {saveMutation.isPending ? (
+              <>
+                <Loader2 className="animate-spin" aria-hidden />
+                Saving…
+              </>
+            ) : (
+              <>
+                <Save aria-hidden />
+                Save Configuration
+              </>
+            )}
           </Button>
         </div>
       </div>

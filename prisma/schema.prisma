@@ -45,6 +45,7 @@ model SearchConfig {
   max_mileage       Int
   min_mileage       Int
   zip_code          Int
+  city              String   @default("Austin")
   radius            Int
   discount_dollar   Int
 
