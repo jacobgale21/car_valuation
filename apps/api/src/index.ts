@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { searchConfigRouter } from './routes/search-config-routes.js';
+import { searchesRouter } from './routes/searches-routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,6 +29,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/search-configuration', searchConfigRouter);
+app.use('/api/searches', searchesRouter);
 
 const server = app.listen(PORT);
 

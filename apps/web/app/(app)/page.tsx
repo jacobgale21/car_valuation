@@ -6,6 +6,7 @@ import { Bookmark, ExternalLink, Loader2, Radar, ScanSearch, TrendingUp } from '
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { runApifySearch } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import type { BestDeal } from '@/stores/dashboard-store';
 import { useDashboardStore } from '@/stores/dashboard-store';
@@ -80,14 +81,12 @@ export default function DashboardPage() {
   const dealsFoundToday = useDashboardStore((state) => state.dealsFoundToday);
   const recentScans = useDashboardStore((state) => state.recentScans);
   const bestDeals = useDashboardStore((state) => state.bestDeals);
-  const isSearching = useDashboardStore((state) => state.isSearching);
-  const runSearch = useDashboardStore((state) => state.runSearch);
 
   const searchMutation = useMutation({
-    mutationFn: runSearch,
+    mutationFn: runApifySearch,
   });
 
-  const searchInProgress = isSearching || searchMutation.isPending;
+  const searchInProgress = searchMutation.isPending;
 
   return (
     <div className="space-y-8">
@@ -211,6 +210,46 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Apify test results — raw listings from saved SearchConfig */}
+      <Card className="gap-0">
+        <CardHeader className="pb-3">
+          <CardTitle>Apify Test Results</CardTitle>
+          <CardDescription>
+            Raw listings returned from your saved search configuration. No valuation or database
+            save yet.
+          </CardDescription>
+        </CardHeader>
+        <Separator />
+        <CardContent className="space-y-3 pt-4">
+          {searchMutation.isError ? (
+            <p className="text-destructive text-sm">
+              Search failed. Ensure the API is running, Search Configuration is saved, and Apify env
+              vars are set.
+            </p>
+          ) : searchMutation.isPending ? (
+            <p className="text-muted-foreground text-sm">
+              Running Apify search… this may take a few minutes.
+            </p>
+          ) : searchMutation.data ? (
+            <>
+              <p className="text-sm">
+                <span className="font-medium">{searchMutation.data.count}</span> listing
+                {searchMutation.data.count === 1 ? '' : 's'} returned ·{' '}
+                {searchMutation.data.config.city} · {searchMutation.data.config.makes.join(', ')}
+              </p>
+              <pre className="bg-muted max-h-96 overflow-auto rounded-lg border p-4 text-xs leading-relaxed">
+                {JSON.stringify(searchMutation.data.items, null, 2)}
+              </pre>
+            </>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              Click &quot;Run Search&quot; to fetch listings from Apify using your saved
+              configuration.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

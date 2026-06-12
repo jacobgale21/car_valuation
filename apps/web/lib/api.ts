@@ -58,4 +58,27 @@ export async function fetchSearchConfiguration(): Promise<
   return data.data;
 }
 
+export interface RunApifySearchResponse {
+  count: number;
+  items: unknown[];
+  ranAt: string;
+  searchConfigId: string;
+  config: {
+    city: string;
+    makes: string[];
+    models: string[];
+    platforms: string[];
+  };
+}
+
+/** Triggers Apify using the saved SearchConfig — test only, no valuation or DB save. */
+export async function runApifySearch(): Promise<RunApifySearchResponse> {
+  const { data } = await apiClient.post<RunApifySearchResponse>(
+    '/api/searches/run',
+    {},
+    { timeout: 300_000 },
+  );
+  return data;
+}
+
 export default apiClient;
