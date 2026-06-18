@@ -1,13 +1,13 @@
 import { Router, type Request, type Response } from 'express';
 
 import { prisma } from '../lib/prisma.js';
-import { getListingsFromApify } from '../services/apify.js';
+import { getListingsFromApify, type ParsedListing } from '../services/apify.js';
 
 export const searchesRouter: Router = Router();
 
 /**
  * POST /api/searches/run
- * Loads the saved SearchConfig from Neon, runs Apify, returns raw listings.
+ * Loads the saved SearchConfig from Neon, runs Apify, returns parsed listings.
  * No valuation or database persistence — test endpoint only.
  */
 searchesRouter.post('/run', async (_req: Request, res: Response) => {
@@ -23,11 +23,11 @@ searchesRouter.post('/run', async (_req: Request, res: Response) => {
       return;
     }
 
-    const items = await getListingsFromApify(searchConfig);
+    const listings: ParsedListing[] = await getListingsFromApify(searchConfig);
 
     res.json({
-      count: items.length,
-      items,
+      count: listings.length,
+      listings,
       ranAt: new Date().toISOString(),
       searchConfigId: searchConfig.id,
       config: {

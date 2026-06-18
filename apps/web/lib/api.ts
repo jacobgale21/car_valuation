@@ -58,9 +58,21 @@ export async function fetchSearchConfiguration(): Promise<
   return data.data;
 }
 
+export interface ParsedListing {
+  listedPrice: number;
+  make: string;
+  model: string;
+  year: number;
+  miles: number;
+  platform: string;
+  url: string;
+  location: string;
+  zip_code: string;
+}
+
 export interface RunApifySearchResponse {
   count: number;
-  items: unknown[];
+  listings: ParsedListing[];
   ranAt: string;
   searchConfigId: string;
   config: {

@@ -1,6 +1,19 @@
 import type { SearchConfig } from '@prisma/client';
 import { ApifyClient } from 'apify-client';
 
+/** Listing fields for valuation / DB ingest (Prisma Listing minus id, createdAt, valuation). */
+export interface ParsedListing {
+  listedPrice: number;
+  make: string;
+  model: string;
+  year: number;
+  miles: number;
+  platform: string;
+  url: string;
+  location: string;
+  zip_code: string;
+}
+
 let apifyClient: ApifyClient | null = null;
 
 function getApifyClient(): ApifyClient {
@@ -62,7 +75,21 @@ function buildActorInput(searchConfig: SearchConfig) {
   };
 }
 
-export async function getListingsFromApify(searchConfig: SearchConfig): Promise<unknown[]> {
+function convertApifyListingToListing(listing: any): ParsedListing {
+  return {
+    listedPrice: Number(listing.listing_price.amount),
+    location: listing.location.reverse_geocode.city_page.display_name,
+    year: Number(listing.marketplace_listing_title.split(' ')[0]),
+    make: listing.marketplace_listing_title.split(' ')[1],
+    model: listing.marketplace_listing_title.split(' ')[2],
+    platform: 'facebook',
+    url: listing.listingUrl,
+    miles: listing.vehicle_odometer_data.value,
+    zip_code: listing.location.reverse_geocode_detailed.postal_code_trimmed,
+  };
+}
+
+export async function getListingsFromApify(searchConfig: SearchConfig): Promise<ParsedListing[]> {
   const client = getApifyClient();
   const actorId = process.env.APIFY_FACEBOOK_ACTOR_ID;
 
@@ -74,5 +101,7 @@ export async function getListingsFromApify(searchConfig: SearchConfig): Promise<
   const run = await client.actor(actorId).call(input);
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
-  return items;
+  return items
+    .map((item) => convertApifyListingToListing(item))
+    .filter((listing): listing is ParsedListing => listing !== null);
 }

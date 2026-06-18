@@ -211,12 +211,12 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Apify test results — raw listings from saved SearchConfig */}
+      {/* Apify test results — parsed listings from saved SearchConfig */}
       <Card className="gap-0">
         <CardHeader className="pb-3">
           <CardTitle>Apify Test Results</CardTitle>
           <CardDescription>
-            Raw listings returned from your saved search configuration. No valuation or database
+            Parsed listings returned from your saved search configuration. No valuation or database
             save yet.
           </CardDescription>
         </CardHeader>
@@ -238,8 +238,50 @@ export default function DashboardPage() {
                 {searchMutation.data.count === 1 ? '' : 's'} returned ·{' '}
                 {searchMutation.data.config.city} · {searchMutation.data.config.makes.join(', ')}
               </p>
-              <pre className="bg-muted max-h-96 overflow-auto rounded-lg border p-4 text-xs leading-relaxed">
-                {JSON.stringify(searchMutation.data.items, null, 2)}
+              {searchMutation.data.listings.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  No listings returned. Run a search after saving your configuration.
+                </p>
+              ) : (
+                <div className="divide-y rounded-lg border">
+                  {searchMutation.data.listings.map((listing, index) => (
+                    <div
+                      key={listing.url || `listing-${index}`}
+                      className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between"
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <p className="font-medium">
+                          {listing.make} {Number.isFinite(listing.year) ? listing.year : '—'}{' '}
+                          {listing.model}
+                        </p>
+                        <p className="text-muted-foreground text-sm">
+                          {Number.isFinite(listing.miles)
+                            ? `${formatMiles(listing.miles)} mi`
+                            : '— mi'}{' '}
+                          · {listing.platform} · {listing.location}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <p className="text-sm font-semibold">
+                          {Number.isFinite(listing.listedPrice)
+                            ? formatPrice(listing.listedPrice)
+                            : '—'}
+                        </p>
+                        {listing.url ? (
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={listing.url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="size-3.5" aria-hidden />
+                              URL
+                            </a>
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <pre className="bg-muted max-h-64 overflow-auto rounded-lg border p-4 text-xs leading-relaxed">
+                {JSON.stringify(searchMutation.data.listings, null, 2)}
               </pre>
             </>
           ) : (
