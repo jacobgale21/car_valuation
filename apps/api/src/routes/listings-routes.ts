@@ -124,14 +124,58 @@
  *
  * =============================================================================
  */
-
-import { Router } from 'express';
-
+import { Router, type Request, type Response } from 'express';
+import { prisma } from '../lib/prisma.js';
 /**
  * Export a Router instance now so index.ts can mount it when routes are implemented.
  * Attach handlers above using listingsRouter.get(...) as each endpoint is built out.
  */
 export const listingsRouter: Router = Router();
+
+function toListingDto(listing: {
+  id: string;
+  listedPrice: { toNumber(): number };
+  make: string;
+  model: string;
+  year: number;
+  miles: number;
+  platform: string;
+  posted: Date;
+  url: string;
+  estimatedPrice: { toNumber(): number } | null;
+  discountPercentage: { toNumber(): number } | null;
+  location: string;
+  zip_code: string;
+}) {
+  return {
+    id: listing.id,
+    listedPrice: listing.listedPrice.toNumber(),
+    make: listing.make,
+    model: listing.model,
+    year: listing.year,
+    miles: listing.miles,
+    platform: listing.platform,
+    posted: listing.posted.toISOString(),
+    url: listing.url,
+    estimatedPrice: listing.estimatedPrice?.toNumber() ?? null,
+    discountPercentage: listing.discountPercentage?.toNumber() ?? null,
+    location: listing.location,
+    zip_code: listing.zip_code,
+  };
+}
+
+listingsRouter.get('/', async (_req: Request, res: Response) => {
+  try {
+    const listings = await prisma.listing.findMany({
+      orderBy: { discountPercentage: 'desc' },
+    });
+
+    res.status(200).json({ data: listings.map(toListingDto) });
+  } catch (error) {
+    console.error('Failed to fetch listings:', error);
+    res.status(500).json({ error: 'Failed to fetch listings' });
+  }
+});
 
 // listingsRouter.get('/', ...)       → see GET /api/listings above
 // listingsRouter.get('/:id', ...)    → see GET /api/listings/:id above

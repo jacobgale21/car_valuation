@@ -11,7 +11,6 @@ export interface ParsedListing {
   platform: string;
   url: string;
   location: string;
-  zip_code: string;
 }
 
 let apifyClient: ApifyClient | null = null;
@@ -78,14 +77,13 @@ function buildActorInput(searchConfig: SearchConfig) {
 function convertApifyListingToListing(listing: any): ParsedListing {
   return {
     listedPrice: Number(listing.listing_price.amount),
-    location: listing.location.reverse_geocode.city_page.display_name,
+    location: listing.location.reverse_geocode.city + ', ' + listing.location.reverse_geocode.state,
     year: Number(listing.marketplace_listing_title.split(' ')[0]),
     make: listing.marketplace_listing_title.split(' ')[1],
     model: listing.marketplace_listing_title.split(' ')[2],
     platform: 'facebook',
     url: listing.listingUrl,
     miles: listing.vehicle_odometer_data.value,
-    zip_code: listing.location.reverse_geocode_detailed.postal_code_trimmed,
   };
 }
 

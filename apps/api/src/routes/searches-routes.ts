@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 
 import { prisma } from '../lib/prisma.js';
-import { getListingsFromApify, type ParsedListing } from '../services/apify.js';
+import { getListings } from '../services/listings.js';
 
 export const searchesRouter: Router = Router();
 
@@ -18,16 +18,15 @@ searchesRouter.post('/run', async (_req: Request, res: Response) => {
 
     if (!searchConfig) {
       res.status(404).json({
-        error: 'No search configuration found. Save your settings on the Search Configuration page first.',
+        error:
+          'No search configuration found. Save your settings on the Search Configuration page first.',
       });
       return;
     }
 
-    const listings: ParsedListing[] = await getListingsFromApify(searchConfig);
+    await getListings(searchConfig); // This will save the listings to the database
 
-    res.json({
-      count: listings.length,
-      listings,
+    res.status(200).json({
       ranAt: new Date().toISOString(),
       searchConfigId: searchConfig.id,
       config: {
@@ -38,9 +37,9 @@ searchesRouter.post('/run', async (_req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Apify search failed:', error);
+    console.error('Saving listings failed:', error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : 'Apify search failed',
+      error: error instanceof Error ? error.message : 'Saving listings failed',
     });
   }
 });

@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { useListings } from '@/hooks/use-listings';
 import { useListingsStore, type VehicleListing } from '@/stores/listings-store';
 
 function formatPrice(amount: number): string {
@@ -41,7 +42,7 @@ function getAmountSaved(listing: VehicleListing): number {
  * - Textarea: editable notes (stored in Zustand until the API exists)
  */
 export default function ShortlistPage() {
-  const listings = useListingsStore((state) => state.listings);
+  const { data: listings = [] } = useListings();
   const savedListingIds = useListingsStore((state) => state.savedListingIds);
   const savedEntries = useListingsStore((state) => state.savedEntries);
   const removeFromShortlist = useListingsStore((state) => state.removeFromShortlist);

@@ -28,7 +28,6 @@ model Listing {
   discountPercentage Decimal? @db.Decimal(5, 2)
 
   location           String
-  zip_code           String
 
   savedListings SavedListing[]
 

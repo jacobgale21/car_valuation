@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useListings } from '@/hooks/use-listings';
 import {
   getMakeOptions,
   getPlatformOptions,
@@ -65,7 +66,7 @@ function getAmountSaved(listing: VehicleListing): number {
  * - Button: URL link and save actions
  */
 export default function ListingsPage() {
-  const listings = useListingsStore((state) => state.listings);
+  const { data: listings = [], isLoading } = useListings();
   const savedListingIds = useListingsStore((state) => state.savedListingIds);
   const toggleSaveListing = useListingsStore((state) => state.toggleSaveListing);
 
@@ -100,8 +101,7 @@ export default function ListingsPage() {
       <div className="space-y-1">
         <h1 className="text-3xl font-bold tracking-tight">Listings</h1>
         <p className="text-muted-foreground">
-          All discovered vehicles. Filter by website or make — data is mocked until the API is
-          connected.
+          All discovered vehicles. Filter by website or make.
         </p>
       </div>
 
@@ -148,7 +148,13 @@ export default function ListingsPage() {
 
       <Card className="gap-0 py-0">
         <CardContent className="p-0">
-          {displayedListings.length === 0 ? (
+          {isLoading ? (
+            <p className="text-muted-foreground px-6 py-6 text-sm">Loading listings…</p>
+          ) : listings.length === 0 ? (
+            <p className="text-muted-foreground px-6 py-6 text-sm">
+              No listings yet. Run a search from the Dashboard to discover vehicles.
+            </p>
+          ) : displayedListings.length === 0 ? (
             <p className="text-muted-foreground px-6 py-6 text-sm">
               No listings match the selected filters.
             </p>
