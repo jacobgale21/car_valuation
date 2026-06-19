@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDown, ArrowUp, Bookmark, ExternalLink } from 'lucide-react';
+import { ArrowDown, ArrowUp, Bookmark, ExternalLink, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -22,9 +22,13 @@ import {
 } from '@/components/ui/table';
 import { useListings } from '@/hooks/use-listings';
 import {
+  useDeleteSavedListing,
+  useSaveListing,
+  useSavedListingIds,
+} from '@/hooks/use-saved-listings';
+import {
   getMakeOptions,
   getPlatformOptions,
-  useListingsStore,
   type VehicleListing,
 } from '@/stores/listings-store';
 
@@ -67,8 +71,26 @@ function getAmountSaved(listing: VehicleListing): number {
  */
 export default function ListingsPage() {
   const { data: listings = [], isLoading } = useListings();
-  const savedListingIds = useListingsStore((state) => state.savedListingIds);
-  const toggleSaveListing = useListingsStore((state) => state.toggleSaveListing);
+  const savedListingIds = useSavedListingIds();
+  const saveListingMutation = useSaveListing();
+  const deleteSavedListingMutation = useDeleteSavedListing();
+
+  const savingListingId =
+    saveListingMutation.isPending && saveListingMutation.variables
+      ? saveListingMutation.variables.id
+      : null;
+  const deletingListingId =
+    deleteSavedListingMutation.isPending && deleteSavedListingMutation.variables
+      ? deleteSavedListingMutation.variables
+      : null;
+
+  const handleSaveToggle = (listing: VehicleListing) => {
+    if (savedListingIds.has(listing.id)) {
+      deleteSavedListingMutation.mutate(listing.id);
+      return;
+    }
+    saveListingMutation.mutate(listing);
+  };
 
   // Local filter state — "all" sentinel values keep every listing visible.
   const [platformFilter, setPlatformFilter] = useState(ALL_PLATFORMS);
@@ -196,7 +218,8 @@ export default function ListingsPage() {
               </TableHeader>
               <TableBody>
                 {displayedListings.map((listing) => {
-                  const isSaved = savedListingIds.includes(listing.id);
+                  const isSaved = savedListingIds.has(listing.id);
+                  const isSaving = savingListingId === listing.id || deletingListingId === listing.id;
                   const amountSaved = getAmountSaved(listing);
 
                   return (
@@ -227,7 +250,7 @@ export default function ListingsPage() {
                       <TableCell>{formatHoursAgo(listing.posted)}</TableCell>
                       <TableCell className="whitespace-normal">{listing.platform}</TableCell>
 
-                      {/* URL button + save toggle (frontend-only, stored in Zustand) */}
+                      {/* URL button + save toggle */}
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button variant="outline" size="icon" className="size-8" asChild>
@@ -244,12 +267,17 @@ export default function ListingsPage() {
                           <Button
                             variant={isSaved ? 'secondary' : 'outline'}
                             size="sm"
-                            onClick={() => toggleSaveListing(listing.id)}
+                            disabled={isSaving}
+                            onClick={() => handleSaveToggle(listing)}
                           >
-                            <Bookmark
-                              className={isSaved ? 'fill-current' : undefined}
-                              aria-hidden
-                            />
+                            {isSaving ? (
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                            ) : (
+                              <Bookmark
+                                className={isSaved ? 'fill-current' : undefined}
+                                aria-hidden
+                              />
+                            )}
                             {isSaved ? 'Saved' : 'Save'}
                           </Button>
                         </div>

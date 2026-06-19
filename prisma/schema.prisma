@@ -57,10 +57,9 @@ model SearchConfig {
 model SavedListing {
   id          String @id @default(cuid())
 
-  userId      String
-  listingId   String
+  listingId   String @unique
 
-  status      String
+  status      String 
 
   notes       String?
 

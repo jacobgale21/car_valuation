@@ -84,7 +84,26 @@ interface ListingDto {
   estimatedPrice: number | null;
   discountPercentage: number | null;
   location: string;
-  zip_code: string;
+}
+
+/** API shape for GET /api/saved — saved row plus nested listing. */
+interface SavedListingDto {
+  id: string;
+  listingId: string;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  listing: ListingDto;
+}
+
+/** Saved shortlist row with parsed dates and nested vehicle listing. */
+export interface SavedListing {
+  id: string;
+  listingId: string;
+  status: string;
+  notes: string;
+  savedAt: Date;
+  listing: VehicleListing;
 }
 
 function toVehicleListing(dto: ListingDto): VehicleListing {
@@ -102,6 +121,17 @@ function toVehicleListing(dto: ListingDto): VehicleListing {
     posted: new Date(dto.posted),
     url: dto.url,
     description: '',
+  };
+}
+
+function toSavedListing(dto: SavedListingDto): SavedListing {
+  return {
+    id: dto.id,
+    listingId: dto.listingId,
+    status: dto.status,
+    notes: dto.notes ?? '',
+    savedAt: new Date(dto.createdAt),
+    listing: toVehicleListing(dto.listing),
   };
 }
 
@@ -125,6 +155,20 @@ export async function fetchListings(): Promise<VehicleListing[]> {
 export async function runSearchAndFetchListings(): Promise<VehicleListing[]> {
   await runSearch();
   return fetchListings();
+}
+
+export async function saveListing(listing: VehicleListing): Promise<SavedListing> {
+  const { data } = await apiClient.post<{ data: SavedListingDto }>('/api/saved', { listing });
+  return toSavedListing(data.data);
+}
+
+export async function deleteListing(listingId: string): Promise<void> {
+  await apiClient.delete(`/api/saved/${listingId}`);
+}
+
+export async function fetchSavedListings(): Promise<SavedListing[]> {
+  const { data } = await apiClient.get<{ data: SavedListingDto[] }>('/api/saved');
+  return data.data.map(toSavedListing);
 }
 
 export default apiClient;

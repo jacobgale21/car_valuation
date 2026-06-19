@@ -1,16 +1,19 @@
 'use client';
 
-import { ChevronDown, ExternalLink, Trash2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { ChevronDown, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  useDeleteSavedListing,
+  useSavedListings,
+  useUpdateSavedListingNotes,
+} from '@/hooks/use-saved-listings';
 import { cn } from '@/lib/utils';
-import { useListings } from '@/hooks/use-listings';
-import { useListingsStore, type VehicleListing } from '@/stores/listings-store';
+import type { VehicleListing } from '@/stores/listings-store';
 
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -33,31 +36,15 @@ function getAmountSaved(listing: VehicleListing): number {
   return listing.estimatedPrice - listing.listedPrice;
 }
 
-/**
- * Shortlist page — saved vehicles from the Listings page.
- *
- * shadcn/ui components:
- * - Collapsible: dropdown panel for estimated value, description, and notes
- * - Card: each saved listing is a bordered row
- * - Textarea: editable notes (stored in Zustand until the API exists)
- */
 export default function ShortlistPage() {
-  const { data: listings = [] } = useListings();
-  const savedListingIds = useListingsStore((state) => state.savedListingIds);
-  const savedEntries = useListingsStore((state) => state.savedEntries);
-  const removeFromShortlist = useListingsStore((state) => state.removeFromShortlist);
-  const updateNotes = useListingsStore((state) => state.updateNotes);
+  const { data: savedListings = [], isLoading } = useSavedListings();
+  const deleteSavedListingMutation = useDeleteSavedListing();
+  const updateNotes = useUpdateSavedListingNotes();
 
-  const savedListings = useMemo(() => {
-    return savedListingIds
-      .map((id) => {
-        const listing = listings.find((item) => item.id === id);
-        const entry = savedEntries[id];
-        if (!listing || !entry) return null;
-        return { listing, entry };
-      })
-      .filter((item): item is NonNullable<typeof item> => item !== null);
-  }, [listings, savedListingIds, savedEntries]);
+  const deletingListingId =
+    deleteSavedListingMutation.isPending && deleteSavedListingMutation.variables
+      ? deleteSavedListingMutation.variables
+      : null;
 
   return (
     <div className="space-y-6">
@@ -68,7 +55,13 @@ export default function ShortlistPage() {
         </p>
       </div>
 
-      {savedListings.length === 0 ? (
+      {isLoading ? (
+        <Card>
+          <CardContent className="py-10 text-center">
+            <p className="text-muted-foreground text-sm">Loading saved listings…</p>
+          </CardContent>
+        </Card>
+      ) : savedListings.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center">
             <p className="text-muted-foreground text-sm">
@@ -78,20 +71,17 @@ export default function ShortlistPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {savedListings.map(({ listing, entry }) => {
+          {savedListings.map((saved) => {
+            const { listing } = saved;
             const amountSaved = getAmountSaved(listing);
+            const isDeleting = deletingListingId === listing.id;
 
             return (
-              <Card key={listing.id} className="gap-0 py-0">
+              <Card key={saved.id} className="gap-0 py-0">
                 <Collapsible className="group">
                   <CardContent className="p-0">
-                    {/* Summary row — always visible */}
                     <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex min-w-0 flex-1 gap-3">
-                        {/*
-                          CollapsibleTrigger toggles the dropdown below.
-                          Chevron rotates when the panel is open (group-data attribute from Radix).
-                        */}
                         <CollapsibleTrigger asChild>
                           <Button
                             variant="ghost"
@@ -112,7 +102,7 @@ export default function ShortlistPage() {
                                 </p>
                                 <p className="text-muted-foreground text-xs">
                                   {formatMiles(listing.miles)} ·{' '}
-                                  {formatHoursSinceSaved(entry.savedAt)}
+                                  {formatHoursSinceSaved(saved.savedAt)}
                                 </p>
                               </div>
 
@@ -148,15 +138,19 @@ export default function ShortlistPage() {
                           variant="outline"
                           size="icon"
                           className="text-destructive hover:text-destructive size-8"
-                          onClick={() => removeFromShortlist(listing.id)}
+                          disabled={isDeleting}
+                          onClick={() => deleteSavedListingMutation.mutate(listing.id)}
                           aria-label="Remove from shortlist"
                         >
-                          <Trash2 className="size-3.5" />
+                          {isDeleting ? (
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                          ) : (
+                            <Trash2 className="size-3.5" />
+                          )}
                         </Button>
                       </div>
                     </div>
 
-                    {/* Dropdown — estimated value, description, notes */}
                     <CollapsibleContent
                       className={cn(
                         'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
@@ -184,7 +178,7 @@ export default function ShortlistPage() {
                           <Textarea
                             id={`notes-${listing.id}`}
                             placeholder="Add your own notes about this vehicle…"
-                            value={entry.notes}
+                            value={saved.notes}
                             onChange={(event) => updateNotes(listing.id, event.target.value)}
                           />
                         </div>

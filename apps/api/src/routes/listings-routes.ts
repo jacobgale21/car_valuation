@@ -125,6 +125,7 @@
  * =============================================================================
  */
 import { Router, type Request, type Response } from 'express';
+import type { Listing } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 /**
  * Export a Router instance now so index.ts can mount it when routes are implemented.
@@ -132,21 +133,7 @@ import { prisma } from '../lib/prisma.js';
  */
 export const listingsRouter: Router = Router();
 
-function toListingDto(listing: {
-  id: string;
-  listedPrice: { toNumber(): number };
-  make: string;
-  model: string;
-  year: number;
-  miles: number;
-  platform: string;
-  posted: Date;
-  url: string;
-  estimatedPrice: { toNumber(): number } | null;
-  discountPercentage: { toNumber(): number } | null;
-  location: string;
-  zip_code: string;
-}) {
+function toListingDto(listing: Listing) {
   return {
     id: listing.id,
     listedPrice: listing.listedPrice.toNumber(),
@@ -160,7 +147,6 @@ function toListingDto(listing: {
     estimatedPrice: listing.estimatedPrice?.toNumber() ?? null,
     discountPercentage: listing.discountPercentage?.toNumber() ?? null,
     location: listing.location,
-    zip_code: listing.zip_code,
   };
 }
 
